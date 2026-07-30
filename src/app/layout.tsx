@@ -3,10 +3,7 @@ import "./globals.css";
 
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-
-import { AppSidebar } from "./components/app-sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lightning Merchant Checkout",
+  title: "Ethio Lightning Checkout",
   description:
     "Merchant checkout demo for Bitcoin Core regtest and Lightning Network payments.",
 };
@@ -32,13 +29,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-zinc-50 antialiased`}
       >
-        <SidebarProvider>
-          <AppSidebar />
-          <main className="flex-1">{children}</main>
-          <Toaster />
-        </SidebarProvider>
+        <main className="min-h-screen">{children}</main>
+        <Toaster />
       </body>
     </html>
   );

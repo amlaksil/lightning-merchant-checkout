@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Blocks, Loader2, RefreshCcw, Zap } from "lucide-react";
+import {
+  Blocks,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  Loader2,
+  RefreshCcw,
+  Zap,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,7 +73,9 @@ const formatDisplayAmount = (checkout: Checkout) => {
   })} ETB`;
 };
 
-const formatStatusVariant = (status: CheckoutStatus | "confirmed" | "mempool" | "unknown") => {
+const formatStatusVariant = (
+  status: CheckoutStatus | "confirmed" | "mempool" | "unknown"
+) => {
   switch (status) {
     case "paid":
     case "confirmed":
@@ -89,6 +99,7 @@ export function OnchainLightningCompare({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [showInspector, setShowInspector] = useState(false);
 
   const fetchComparison = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -106,7 +117,9 @@ export function OnchainLightningCompare({
         const response = await fetch(`/api/compare/onchain-lightning${suffix}`, {
           cache: "no-store",
         });
-        const data = (await response.json()) as ComparisonResponse | { error?: string };
+        const data = (await response.json()) as
+          | ComparisonResponse
+          | { error?: string };
 
         if (!response.ok) {
           throw new Error(
@@ -156,12 +169,14 @@ export function OnchainLightningCompare({
   }, [activeCheckout]);
 
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-        <div className="space-y-1">
-          <CardTitle>On-chain vs Lightning</CardTitle>
-          <CardDescription>
-            Live comparison using the active Lightning checkout and Bitcoin Core regtest state.
+    <Card className="w-full rounded-3xl border-zinc-200 bg-white shadow-sm">
+      <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <CardTitle>Why Lightning Wins</CardTitle>
+          <CardDescription className="max-w-3xl text-sm leading-6">
+            Lightning settles customer payments immediately, while on-chain
+            Bitcoin payments move through mempool and confirmation stages before
+            the merchant treats them as final.
           </CardDescription>
         </div>
         <Button
@@ -169,6 +184,7 @@ export function OnchainLightningCompare({
           size="sm"
           onClick={() => fetchComparison()}
           disabled={refreshing}
+          className="rounded-xl"
         >
           {refreshing ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -178,19 +194,28 @@ export function OnchainLightningCompare({
           Refresh
         </Button>
       </CardHeader>
+
       <CardContent className="space-y-6">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-lg border p-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
             <div className="mb-3 flex items-center gap-2 text-zinc-900">
               <Zap className="h-4 w-4" />
-              <span className="font-medium">Lightning checkout</span>
+              <span className="text-sm font-medium">Lightning checkout</span>
             </div>
             {!activeCheckout || !lightningSummary ? (
-              <p className="text-sm text-zinc-500">
-                Create a checkout to compare instant Lightning settlement against an on-chain payment.
-              </p>
+              <div className="space-y-3 text-sm text-zinc-600">
+                <p>Create a checkout to show the instant-settlement customer flow.</p>
+                <div className="rounded-xl border border-zinc-200 bg-white p-3">
+                  <div className="font-medium text-zinc-900">Typical flow</div>
+                  <ul className="mt-2 space-y-1 text-xs text-zinc-500">
+                    <li>1. Merchant generates a Lightning invoice</li>
+                    <li>2. Customer scans and pays</li>
+                    <li>3. Merchant sees payment settle immediately</li>
+                  </ul>
+                </div>
+              </div>
             ) : (
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-500">Status</span>
                   <Badge variant={formatStatusVariant(activeCheckout.status)}>
@@ -202,37 +227,33 @@ export function OnchainLightningCompare({
                   <span>{lightningSummary.displayAmount}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Lightning amount</span>
+                  <span className="text-zinc-500">Settlement</span>
                   <span>{lightningSummary.sats}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-500">Paid at</span>
                   <span>{lightningSummary.paidAt}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Expires at</span>
-                  <span>{lightningSummary.expiresAt}</span>
-                </div>
               </div>
             )}
           </div>
 
-          <div className="rounded-lg border p-4">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
             <div className="mb-3 flex items-center gap-2 text-zinc-900">
-              <Blocks className="h-4 w-4" />
-              <span className="font-medium">Bitcoin Core state</span>
+              <Clock3 className="h-4 w-4" />
+              <span className="text-sm font-medium">On-chain confirmation</span>
             </div>
             {loading && !comparison ? (
               <div className="flex items-center text-sm text-zinc-500">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading chain data...
+                Loading chain state...
               </div>
             ) : error ? (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
                 {error}
               </div>
             ) : comparison ? (
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-500">Network</span>
                   <span>{comparison.chain.network}</span>
@@ -242,83 +263,119 @@ export function OnchainLightningCompare({
                   <span>{comparison.chain.tipHeight}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Best block time</span>
-                  <span>{formatDateTime(comparison.chain.bestBlockTime)}</span>
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-zinc-500">Mempool</span>
                   <span>{comparison.chain.mempoolSize} tx</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Difficulty</span>
-                  <span>{comparison.chain.difficulty.toLocaleString()}</span>
+                  <span className="text-zinc-500">Latest block</span>
+                  <span>{formatDateTime(comparison.chain.bestBlockTime)}</span>
                 </div>
               </div>
             ) : null}
           </div>
         </div>
 
-        <div className="space-y-3 rounded-lg border p-4">
-          <div className="space-y-2">
-            <Label htmlFor="onchain-txid">On-chain transaction txid</Label>
-            <div className="flex gap-3">
-              <Input
-                id="onchain-txid"
-                value={txid}
-                onChange={(event) => setTxid(event.target.value)}
-                placeholder="Paste a regtest txid to inspect confirmations"
-              />
-              <Button variant="outline" onClick={() => fetchComparison()}>
-                Inspect
-              </Button>
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-zinc-900">
+                <Blocks className="h-4 w-4" />
+                <span className="font-medium">Live on-chain inspector</span>
+              </div>
+              <p className="text-sm text-zinc-500">
+                Optional demo tool for showing how a Bitcoin transaction moves
+                from mempool to confirmed.
+              </p>
             </div>
-            <p className="text-xs text-zinc-500">
-              The panel searches the mempool first, then the latest {comparison?.chain.searchDepth ?? 25} blocks for confirmation state.
-            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-fit rounded-xl"
+              onClick={() => setShowInspector((current) => !current)}
+            >
+              {showInspector ? (
+                <>
+                  <ChevronUp className="mr-2 h-4 w-4" />
+                  Hide inspector
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-2 h-4 w-4" />
+                  Show inspector
+                </>
+              )}
+            </Button>
           </div>
 
-          {comparison?.transaction ? (
-            <div className="rounded-lg bg-zinc-50 p-4 text-sm">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="font-medium text-zinc-900">{comparison.transaction.txid}</div>
-                <Badge variant={formatStatusVariant(comparison.transaction.status)}>
-                  {comparison.transaction.status}
-                </Badge>
+          {showInspector && (
+            <div className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="onchain-txid">Regtest transaction txid</Label>
+                <div className="flex gap-3">
+                  <Input
+                    id="onchain-txid"
+                    value={txid}
+                    onChange={(event) => setTxid(event.target.value)}
+                    placeholder="Paste a txid to inspect confirmation progress"
+                  />
+                  <Button variant="outline" className="rounded-xl" onClick={() => fetchComparison()}>
+                    Inspect
+                  </Button>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  The inspector checks the mempool first, then the latest{" "}
+                  {comparison?.chain.searchDepth ?? 25} blocks for the
+                  transaction.
+                </p>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <span className="text-zinc-500">Confirmations:</span>{" "}
-                  {comparison.transaction.confirmations}
+
+              {comparison?.transaction ? (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="truncate font-medium text-zinc-900">
+                      {comparison.transaction.txid}
+                    </div>
+                    <Badge variant={formatStatusVariant(comparison.transaction.status)}>
+                      {comparison.transaction.status}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <span className="text-zinc-500">Confirmations:</span>{" "}
+                      {comparison.transaction.confirmations}
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">Block height:</span>{" "}
+                      {comparison.transaction.blockHeight ?? "—"}
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">Block time:</span>{" "}
+                      {formatDateTime(comparison.transaction.blockTime)}
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">Total output:</span>{" "}
+                      {comparison.transaction.totalOutput !== undefined
+                        ? `${comparison.transaction.totalOutput} BTC`
+                        : "—"}
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">Mempool fee:</span>{" "}
+                      {comparison.transaction.fee !== undefined
+                        ? `${comparison.transaction.fee} BTC`
+                        : "—"}
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">First seen:</span>{" "}
+                      {formatDateTime(comparison.transaction.firstSeenTime)}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-zinc-500">Block height:</span>{" "}
-                  {comparison.transaction.blockHeight ?? "—"}
+              ) : (
+                <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-4 text-sm text-zinc-500">
+                  Paste a regtest txid when you want to demonstrate the live
+                  confirmation lifecycle during the presentation.
                 </div>
-                <div>
-                  <span className="text-zinc-500">Block time:</span>{" "}
-                  {formatDateTime(comparison.transaction.blockTime)}
-                </div>
-                <div>
-                  <span className="text-zinc-500">Total output:</span>{" "}
-                  {comparison.transaction.totalOutput !== undefined
-                    ? `${comparison.transaction.totalOutput} BTC`
-                    : "—"}
-                </div>
-                <div>
-                  <span className="text-zinc-500">Mempool fee:</span>{" "}
-                  {comparison.transaction.fee !== undefined
-                    ? `${comparison.transaction.fee} BTC`
-                    : "—"}
-                </div>
-                <div>
-                  <span className="text-zinc-500">First seen:</span>{" "}
-                  {formatDateTime(comparison.transaction.firstSeenTime)}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed p-4 text-sm text-zinc-500">
-              Paste a regtest txid to compare a real on-chain payment lifecycle with the Lightning checkout state.
+              )}
             </div>
           )}
         </div>
