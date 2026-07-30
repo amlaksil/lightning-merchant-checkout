@@ -1,120 +1,204 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Loader2, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { Checkout } from "@/types/checkout";
 import { toast } from "sonner";
 
-import { FrontendInvoice } from "@/types/lnd";
-import { cn } from "@/lib/utils";
+const POLL_INTERVAL_MS = 2_000;
+const DEFAULT_EXPIRY_SECONDS = 3_600;
+
+const formatCurrency = (amount: number, currency: "ETB" | "SAT") => {
+  if (currency === "SAT") {
+    return `${amount.toLocaleString()} sats`;
+  }
+
+  return `${amount.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ETB`;
+};
+
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+const getMinutesRemaining = (expiresAt: string) => {
+  const remainingMs = new Date(expiresAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(remainingMs / 60_000));
+};
 
 export function InvoiceGenerator() {
-  const [amount, setAmount] = useState<number>(0);
+  const [displayAmount, setDisplayAmount] = useState<string>("");
   const [memo, setMemo] = useState<string>("");
+  const [merchantRef, setMerchantRef] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
-  const [invoice, setInvoice] = useState<FrontendInvoice | null>(null);
+  const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [checkingPayment, setCheckingPayment] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!invoice || invoice.isPaid) return;
+    if (!checkout || checkout.status !== "pending") {
+      setCheckingPayment(false);
+      return;
+    }
 
     setCheckingPayment(true);
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/invoice/${invoice.rHash}/status`);
+        const response = await fetch(`/api/checkouts/${checkout.id}/refresh`, {
+          method: "POST",
+        });
         if (!response.ok) {
-          throw new Error("Failed to check payment status");
+          throw new Error("Failed to refresh checkout status");
         }
 
-        const data = await response.json();
-        if (data.isPaid) {
-          setInvoice((prev) => (prev ? { ...prev, isPaid: true } : null));
-          toast.success("Checkout paid", {
-            description: "The customer payment settled successfully.",
-          });
-          clearInterval(pollInterval);
-          setCheckingPayment(false);
-        }
-      } catch (err) {
-        console.error("Error checking payment status:", err);
+        const nextCheckout = (await response.json()) as Checkout;
+
+        setCheckout((previousCheckout) => {
+          if (
+            previousCheckout?.status === "pending" &&
+            nextCheckout.status === "paid"
+          ) {
+            toast.success("Checkout paid", {
+              description: "The customer payment settled successfully.",
+            });
+          }
+
+          if (
+            previousCheckout?.status === "pending" &&
+            nextCheckout.status === "expired"
+          ) {
+            toast.error("Checkout expired", {
+              description: "Create a new payment request for the customer.",
+            });
+          }
+
+          return nextCheckout;
+        });
+      } catch (refreshError) {
+        console.error("Error refreshing checkout status:", refreshError);
       }
-    }, 2000);
+    }, POLL_INTERVAL_MS);
 
     return () => {
       clearInterval(pollInterval);
       setCheckingPayment(false);
     };
-  }, [invoice]);
+  }, [checkout]);
 
-  const handleGenerateInvoice = async () => {
+  const amountPreview = useMemo(() => {
+    if (!checkout) {
+      return null;
+    }
+
+    return {
+      displayAmount: formatCurrency(checkout.displayAmount, checkout.displayCurrency),
+      settlementAmount: formatCurrency(checkout.amountSats, "SAT"),
+      expiresAt: formatDateTime(checkout.expiresAt),
+      minutesRemaining: getMinutesRemaining(checkout.expiresAt),
+    };
+  }, [checkout]);
+
+  const resetCheckoutForm = () => {
+    setDisplayAmount("");
+    setMemo("");
+    setMerchantRef("");
+    setError("");
+    setCheckout(null);
+    setCheckingPayment(false);
+  };
+
+  const handleCreateCheckout = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch("/api/invoice", {
+      const response = await fetch("/api/checkouts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount,
+          displayAmount: Number(displayAmount),
+          displayCurrency: "ETB",
           memo,
-          expiry: 3600,
+          merchantRef,
+          expirySeconds: DEFAULT_EXPIRY_SECONDS,
         }),
       });
 
+      const data = (await response.json()) as Checkout | { error?: string };
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate checkout invoice");
+        throw new Error(
+          "error" in data && data.error
+            ? data.error
+            : "Failed to create checkout"
+        );
       }
 
-      const data = await response.json();
-      setInvoice(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-      console.error(err);
+      setCheckout(data as Checkout);
+    } catch (checkoutError) {
+      setError(
+        checkoutError instanceof Error
+          ? checkoutError.message
+          : "An unexpected error occurred"
+      );
+      console.error(checkoutError);
     } finally {
       setLoading(false);
     }
   };
 
   const copyToClipboard = () => {
-    if (invoice?.paymentRequest) {
-      navigator.clipboard.writeText(invoice.paymentRequest);
-      toast.success("Payment request copied", {
-        description: "The checkout payment request is now in your clipboard.",
-      });
+    if (!checkout?.paymentRequest) {
+      return;
     }
+
+    navigator.clipboard.writeText(checkout.paymentRequest);
+    toast.success("Payment request copied", {
+      description: "The checkout payment request is now in your clipboard.",
+    });
   };
 
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Create Checkout Invoice</CardTitle>
+        <CardTitle>Create Merchant Checkout</CardTitle>
+        <CardDescription>
+          Price in ETB, settle in sats, and track payment state through the new
+          checkout API.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="amount">Checkout Amount (sats)</Label>
+          <Label htmlFor="display-amount">Customer Price (ETB)</Label>
           <Input
-            id="amount"
+            id="display-amount"
             type="number"
             min="1"
-            value={amount || ""}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            placeholder="Enter amount in satoshis"
+            step="0.01"
+            value={displayAmount}
+            onChange={(event) => setDisplayAmount(event.target.value)}
+            placeholder="Enter amount in ETB"
           />
         </div>
         <div className="space-y-2">
@@ -122,8 +206,17 @@ export function InvoiceGenerator() {
           <Textarea
             id="memo"
             value={memo}
-            onChange={(e) => setMemo(e.target.value)}
+            onChange={(event) => setMemo(event.target.value)}
             placeholder="Describe what the customer is paying for"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="merchant-ref">Order Reference</Label>
+          <Input
+            id="merchant-ref"
+            value={merchantRef}
+            onChange={(event) => setMerchantRef(event.target.value)}
+            placeholder="Optional merchant-side reference"
           />
         </div>
 
@@ -131,55 +224,65 @@ export function InvoiceGenerator() {
           <p className="text-sm font-medium text-destructive">{error}</p>
         )}
 
-        {invoice && (
+        {checkout && amountPreview && (
           <div
             className={cn(
               "mt-6 space-y-4 transition-all duration-500",
-              invoice.isPaid && "opacity-50"
+              checkout.status === "paid" && "opacity-60"
             )}
           >
-            {invoice.isPaid ? (
+            {checkout.status === "paid" ? (
               <div className="flex flex-col items-center justify-center py-8 text-green-600">
                 <CheckCircle2 className="h-24 w-24 animate-in zoom-in" />
                 <p className="mt-4 text-lg font-medium">Checkout Paid</p>
                 <p className="text-sm text-muted-foreground">
-                  Amount: {invoice.amount} sats
+                  {amountPreview.displayAmount} settled as {amountPreview.settlementAmount}
                 </p>
               </div>
             ) : (
               <>
                 <div className="flex justify-center">
-                  <div className="bg-white p-4 rounded-lg">
-                    <QRCodeSVG value={invoice.paymentRequest} size={200} />
+                  <div className="rounded-lg bg-white p-4">
+                    <QRCodeSVG value={checkout.paymentRequest} size={200} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Payment Request</Label>
                     <Button variant="ghost" size="sm" onClick={copyToClipboard}>
-                      <Copy className="h-4 w-4 mr-2" />
+                      <Copy className="mr-2 h-4 w-4" />
                       Copy
                     </Button>
                   </div>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="text-xs break-all font-mono">
-                      {invoice.paymentRequest}
+                  <div className="rounded-md bg-muted p-3">
+                    <p className="break-all font-mono text-xs">
+                      {checkout.paymentRequest}
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Amount:</span>{" "}
-                    {invoice.amount} sats
+                    <span className="font-medium">Customer Price:</span>{" "}
+                    {amountPreview.displayAmount}
                   </div>
                   <div>
-                    <span className="font-medium">Expires in:</span>{" "}
-                    {Math.floor(invoice.expiry / 60)} minutes
+                    <span className="font-medium">Lightning Amount:</span>{" "}
+                    {amountPreview.settlementAmount}
+                  </div>
+                  <div>
+                    <span className="font-medium">Status:</span>{" "}
+                    <span className="capitalize">{checkout.status}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Expires:</span>{" "}
+                    {checkout.status === "expired"
+                      ? "Expired"
+                      : `${amountPreview.minutesRemaining} min (${amountPreview.expiresAt})`}
                   </div>
                 </div>
-                {checkingPayment && (
+                {checkingPayment && checkout.status === "pending" && (
                   <div className="flex items-center justify-center py-4 text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
                     <span>Waiting for customer payment...</span>
                   </div>
                 )}
@@ -188,11 +291,11 @@ export function InvoiceGenerator() {
           </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex gap-3">
         <Button
-          className="w-full"
-          onClick={handleGenerateInvoice}
-          disabled={loading || !amount || amount <= 0}
+          className="flex-1"
+          onClick={handleCreateCheckout}
+          disabled={loading || Number(displayAmount) <= 0}
         >
           {loading ? (
             <>
@@ -200,9 +303,15 @@ export function InvoiceGenerator() {
               Creating checkout...
             </>
           ) : (
-            "Create Checkout Invoice"
+            "Create Checkout"
           )}
         </Button>
+        {checkout && (
+          <Button variant="outline" onClick={resetCheckoutForm}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            New Sale
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
