@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { CheckCircle2, Copy, Loader2, RotateCcw } from "lucide-react";
@@ -238,6 +239,9 @@ export function InvoiceGenerator() {
                 <p className="text-sm text-muted-foreground">
                   {amountPreview.displayAmount} settled as {amountPreview.settlementAmount}
                 </p>
+                <Button variant="outline" className="mt-4" asChild>
+                  <Link href={`/checkout/${checkout.id}`}>View receipt</Link>
+                </Button>
               </div>
             ) : (
               <>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
 
@@ -174,9 +175,14 @@ export function RecentSales() {
                   <div className="font-medium text-zinc-900">
                     {sale.memo || "Merchant checkout"}
                   </div>
-                  <Badge variant={getStatusVariant(sale.status)}>
-                    {sale.status}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={getStatusVariant(sale.status)}>
+                      {sale.status}
+                    </Badge>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/checkout/${sale.id}`}>Details</Link>
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
