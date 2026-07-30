@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { CheckCircle2, Copy, Loader2, RotateCcw } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Loader2,
+  RotateCcw,
+  TimerReset,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -41,9 +47,15 @@ const formatDateTime = (value: string) =>
     timeStyle: "short",
   });
 
-const getMinutesRemaining = (expiresAt: string) => {
-  const remainingMs = new Date(expiresAt).getTime() - Date.now();
-  return Math.max(0, Math.ceil(remainingMs / 60_000));
+const getRemainingMs = (expiresAt: string) =>
+  Math.max(0, new Date(expiresAt).getTime() - Date.now());
+
+const formatCountdown = (remainingMs: number) => {
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
 export function InvoiceGenerator() {
@@ -54,6 +66,21 @@ export function InvoiceGenerator() {
   const [error, setError] = useState<string>("");
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [checkingPayment, setCheckingPayment] = useState<boolean>(false);
+  const [countdownMs, setCountdownMs] = useState<number>(0);
+
+  useEffect(() => {
+    if (!checkout || checkout.status !== "pending") {
+      setCountdownMs(0);
+      return;
+    }
+
+    setCountdownMs(getRemainingMs(checkout.expiresAt));
+    const interval = setInterval(() => {
+      setCountdownMs(getRemainingMs(checkout.expiresAt));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [checkout]);
 
   useEffect(() => {
     if (!checkout || checkout.status !== "pending") {
@@ -111,12 +138,16 @@ export function InvoiceGenerator() {
     }
 
     return {
-      displayAmount: formatCurrency(checkout.displayAmount, checkout.displayCurrency),
+      displayAmount: formatCurrency(
+        checkout.displayAmount,
+        checkout.displayCurrency
+      ),
       settlementAmount: formatCurrency(checkout.amountSats, "SAT"),
       expiresAt: formatDateTime(checkout.expiresAt),
-      minutesRemaining: getMinutesRemaining(checkout.expiresAt),
+      countdown: formatCountdown(countdownMs),
+      isExpiredInUi: countdownMs <= 0,
     };
-  }, [checkout]);
+  }, [checkout, countdownMs]);
 
   const resetCheckoutForm = () => {
     setDisplayAmount("");
@@ -125,6 +156,7 @@ export function InvoiceGenerator() {
     setError("");
     setCheckout(null);
     setCheckingPayment(false);
+    setCountdownMs(0);
   };
 
   const handleCreateCheckout = async () => {
@@ -243,6 +275,15 @@ export function InvoiceGenerator() {
                   <Link href={`/checkout/${checkout.id}`}>View receipt</Link>
                 </Button>
               </div>
+            ) : checkout.status === "expired" || amountPreview.isExpiredInUi ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center text-destructive">
+                <TimerReset className="mx-auto h-12 w-12" />
+                <p className="mt-4 text-lg font-medium">Checkout expired</p>
+                <p className="mt-2 text-sm">
+                  The payment window closed before settlement. Create a new sale
+                  to generate a fresh invoice.
+                </p>
+              </div>
             ) : (
               <>
                 <div className="flex justify-center">
@@ -278,10 +319,12 @@ export function InvoiceGenerator() {
                     <span className="capitalize">{checkout.status}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Expires:</span>{" "}
-                    {checkout.status === "expired"
-                      ? "Expired"
-                      : `${amountPreview.minutesRemaining} min (${amountPreview.expiresAt})`}
+                    <span className="font-medium">Time left:</span>{" "}
+                    {amountPreview.countdown}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium">Expires at:</span>{" "}
+                    {amountPreview.expiresAt}
                   </div>
                 </div>
                 {checkingPayment && checkout.status === "pending" && (
