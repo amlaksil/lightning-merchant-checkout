@@ -46,7 +46,11 @@ export class BitcoinCLI {
   private buildBaseCommand(): string {
     const networkFlag =
       this.config.network === "mainnet" ? "" : `-${this.config.network}`;
-    return `bitcoin-cli ${networkFlag} -rpcconnect=${this.config.rpchost} -rpcuser=${this.config.rpcuser} -rpcpassword=${this.config.rpcpassword} -rpcport=${this.config.rpcport} -rpcwallet=${this.config.rpcwallet}`;
+    const walletFlag = this.config.rpcwallet
+      ? ` -rpcwallet=${this.config.rpcwallet}`
+      : "";
+
+    return `bitcoin-cli ${networkFlag} -rpcconnect=${this.config.rpchost} -rpcuser=${this.config.rpcuser} -rpcpassword=${this.config.rpcpassword} -rpcport=${this.config.rpcport}${walletFlag}`;
   }
 
   private async executeCommand<T>(command: string): Promise<T> {
