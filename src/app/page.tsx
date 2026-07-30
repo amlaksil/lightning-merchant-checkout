@@ -1,9 +1,15 @@
 "use client";
 
+import { useState } from "react";
+
 import { InvoiceGenerator } from "@/app/components/invoice-generator";
+import { OnchainLightningCompare } from "@/components/onchain-lightning-compare";
 import { RecentSales } from "@/components/recent-sales";
+import { Checkout } from "@/types/checkout";
 
 export default function HomePage() {
+  const [activeCheckout, setActiveCheckout] = useState<Checkout | null>(null);
+
   return (
     <div className="min-h-screen bg-white px-4 py-8 md:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
@@ -17,8 +23,11 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] lg:items-start">
-          <InvoiceGenerator />
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:items-start">
+          <div className="space-y-8">
+            <InvoiceGenerator onCheckoutChange={setActiveCheckout} />
+            <OnchainLightningCompare activeCheckout={activeCheckout} />
+          </div>
           <RecentSales />
         </div>
       </div>

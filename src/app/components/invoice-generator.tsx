@@ -58,7 +58,11 @@ const formatCountdown = (remainingMs: number) => {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
-export function InvoiceGenerator() {
+interface InvoiceGeneratorProps {
+  onCheckoutChange?: (checkout: Checkout | null) => void;
+}
+
+export function InvoiceGenerator({ onCheckoutChange }: InvoiceGeneratorProps) {
   const [displayAmount, setDisplayAmount] = useState<string>("");
   const [memo, setMemo] = useState<string>("");
   const [merchantRef, setMerchantRef] = useState<string>("");
@@ -67,6 +71,10 @@ export function InvoiceGenerator() {
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [checkingPayment, setCheckingPayment] = useState<boolean>(false);
   const [countdownMs, setCountdownMs] = useState<number>(0);
+
+  useEffect(() => {
+    onCheckoutChange?.(checkout);
+  }, [checkout, onCheckoutChange]);
 
   useEffect(() => {
     if (!checkout || checkout.status !== "pending") {
