@@ -1,4 +1,4 @@
-# Lightning Merchant Checkout
+# ⚡ Lightning Invoice Generator
 
 A merchant checkout demo for the Bitcoin + Lightning bootcamp. The project starts from an LND invoice flow and is being refactored into a real checkout experience with persistent sales records, ETB pricing, and Bitcoin Core comparison tooling.
 
@@ -10,14 +10,11 @@ A merchant checkout demo for the Bitcoin + Lightning bootcamp. The project start
 - ETB pricing with Coinbase `BTC -> ETB` lookup and manual fallback
 
 ## Tech Stack
-
-- Next.js 15
-- TypeScript
-- LND gRPC
-- Bitcoin Core RPC
-- Supabase
-- Polar (for local Lightning network)
-
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Bitcoin](https://img.shields.io/badge/Bitcoin-Core-orange)
+![Lightning](https://img.shields.io/badge/Lightning-LND-yellow)
+![License](https://img.shields.io/badge/License-MIT-green)
 ## Local Setup
 
 1. Clone the repository:
