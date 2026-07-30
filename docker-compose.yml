@@ -1,0 +1,20 @@
+
+
+services:
+  app:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+      - "38332:38332"
+    env_file:
+      - .env
+    volumes:
+      - ./certs:/app/certs
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    restart: unless-stopped
