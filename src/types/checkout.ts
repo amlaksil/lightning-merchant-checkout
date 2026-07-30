@@ -43,6 +43,21 @@ export interface Checkout {
   updatedAt: string;
 }
 
+export interface ExchangeRateQuote {
+  btcEtbRate: number;
+  satsPerEtb: number;
+  source: "coinbase" | "manual";
+  fetchedAt: string;
+}
+
+export interface CreateCheckoutInput {
+  displayAmount: number;
+  displayCurrency?: PricingCurrency;
+  memo?: string | null;
+  merchantRef?: string | null;
+  expirySeconds?: number;
+}
+
 export interface CreateCheckoutRecordInput {
   amountSats: number;
   displayCurrency: PricingCurrency;
