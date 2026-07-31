@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+//Experianced an error here
 
 import { FrontendInvoice } from "@/types/lnd";
 import { cn } from "@/lib/utils";
