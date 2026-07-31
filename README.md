@@ -1,4 +1,4 @@
-# ⚡ Lightning Invoice Generator
+# ⚡ Ethio Lightening Checkout
 
 A merchant checkout demo for the Bitcoin + Lightning bootcamp. The project starts from an LND invoice flow and is being refactored into a real checkout experience with persistent sales records, ETB pricing, and Bitcoin Core comparison tooling.
 
