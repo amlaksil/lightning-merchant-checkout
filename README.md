@@ -2,6 +2,14 @@
 
 A merchant checkout demo for the Bitcoin + Lightning bootcamp. The project starts from an LND invoice flow and is being refactored into a real checkout experience with persistent sales records, ETB pricing, and Bitcoin Core comparison tooling.
 
+<img width="2654" height="1510" alt="Screenshot from 2026-08-01 21-24-37" src="https://github.com/user-attachments/assets/1e7fe060-ed52-4987-9c34-f3bcbb7c2b1d" />
+
+<img width="2628" height="1438" alt="Screenshot from 2026-08-01 21-24-58" src="https://github.com/user-attachments/assets/83bab75d-93c4-4bc0-a1b2-3987f332280d" />
+
+<img width="2548" height="1436" alt="Screenshot from 2026-08-01 21-26-16" src="https://github.com/user-attachments/assets/9c7305b4-5900-4495-b8c7-283b241fdb9e" />
+
+<img width="1846" height="1414" alt="Screenshot from 2026-08-01 21-26-48" src="https://github.com/user-attachments/assets/5cad7384-7b6e-44f5-9a80-62d21c8ce893" />
+
 ## Current Scope
 
 - Merchant-facing Lightning checkout flow
